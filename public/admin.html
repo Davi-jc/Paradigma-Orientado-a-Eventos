@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admin - Sistema de Passagens</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Admin — Sistema de Passagens</h1>
+      <div><span class="badge">Painel do Administrador</span></div>
+    </header>
+
+    <div class="card">
+      <div class="controls">
+        <input id="viagemId" type="text" placeholder="ID da viagem (V001)">
+        <input id="titulo" type="text" placeholder="Titulo (Blumenau → Joinville)">
+        <input id="hora" type="text" placeholder="Horário (2025-10-20 08:00)">
+        <button id="criar">Criar Viagem</button>
+        <button id="encerrar" class="ghost">Encerrar Viagem</button>
+      </div>
+      <div class="meta">Crie uma viagem com 16 poltronas. Reservas expiram em 2 minutos.</div>
+    </div>
+
+    <div id="lista" class="card"></div>
+
+    <footer>Desenvolvido por: [Davi Jefferson Chiquetti e Marcus André Geacomo Demarchi] — Evento orientado a eventos (Socket.IO)</footer>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+  <script>
+    const criarBtn = document.getElementById('criar');
+    const encerrarBtn = document.getElementById('encerrar');
+    criarBtn.onclick = () => {
+      const id = document.getElementById('viagemId').value.trim();
+      const titulo = document.getElementById('titulo').value.trim();
+      const hora = document.getElementById('hora').value.trim();
+      if (!id || !titulo) { alert('Preencha id e título'); return; }
+      const poltronas = [];
+      for (let r=1;r<=4;r++){
+        for (let c=1;c<=4;c++){
+          poltronas.push(`${r}${String.fromCharCode(64+c)}`);
+        }
+      }
+      socket.emit('viagem.criada', { id, titulo, hora, poltronas });
+    };
+
+    encerrarBtn.onclick = () => {
+      const id = document.getElementById('viagemId').value.trim();
+      if (!id) { alert('Informe id da viagem'); return; }
+      socket.emit('viagem.encerrada', { viagemId: id });
+    };
+
+    function render() {
+      const root = document.getElementById('lista');
+      root.innerHTML = '';
+      const viagens = window.appState.viagens || {};
+      if (Object.keys(viagens).length === 0) {
+        root.innerHTML = '<div class="meta">Nenhuma viagem criada ainda.</div>';
+        return;
+      }
+      for (const id in viagens) {
+        const v = viagens[id];
+        const div = document.createElement('div');
+        div.className = 'card';
+        const header = document.createElement('div');
+        header.innerHTML = `<strong>${v.id} — ${v.titulo} <span style="float:right">${v.aberto ? 'Vendas abertas' : 'Encerrada'}</span></strong>`;
+        div.appendChild(header);
+
+        const grid = document.createElement('div');
+        grid.className = 'poltronas';
+        for (const pn in v.poltronas) {
+          const info = v.poltronas[pn];
+          const s = document.createElement('div');
+          s.className = 'seat ' + info.status;
+          s.textContent = pn;
+          grid.appendChild(s);
+        }
+        div.appendChild(grid);
+        root.appendChild(div);
+      }
+    }
+
+    document.addEventListener('app.viagens.updated', render);
+  </script>
+</body>
+</html>

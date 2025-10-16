@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Passageiro — Sistema de Passagens</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Passageiro</h1>
+      <div><span class="badge">Compra de Passagens (Realtime)</span></div>
+    </header>
+
+    <div class="card">
+      <div class="controls">
+        <input id="nome" type="text" placeholder="Seu nome">
+        <select id="selectViagem"></select>
+      </div>
+      <div id="viagemInfo" class="meta"></div>
+    </div>
+
+    <div id="poltronasWrap" class="card">
+      <div id="poltronas" class="poltronas"></div>
+    </div>
+
+    <footer>Desenvolvido por: [Davi Jefferson Chiquetti e Marcus André Geacomo Demarchi] — Projeto de Eventos em Tempo Real</footer>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+  <script>
+    const select = document.getElementById('selectViagem');
+    const poltronasEl = document.getElementById('poltronas');
+    const infoEl = document.getElementById('viagemInfo');
+
+    function refreshSelect() {
+      select.innerHTML = '';
+      const viagens = window.appState.viagens || {};
+      for (const id in viagens) {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = `${id} - ${viagens[id].titulo} (${viagens[id].aberto ? 'Aberto' : 'Encerrado'})`;
+        select.appendChild(opt);
+      }
+      if (select.options.length) {
+        select.value = select.options[0].value;
+        renderPoltronas();
+      } else {
+        poltronasEl.innerHTML = '<div class="meta">Nenhuma viagem disponível</div>';
+        infoEl.textContent = '';
+      }
+    }
+
+    select.onchange = renderPoltronas;
+
+    function renderPoltronas() {
+      const viagens = window.appState.viagens || {};
+      const id = select.value;
+      if (!id || !viagens[id]) return;
+      const v = viagens[id];
+      infoEl.textContent = `${v.titulo} — ${v.hora} — ${v.aberto ? 'Vendas abertas' : 'Vendas encerradas'}`;
+      poltronasEl.innerHTML = '';
+      for (const pn in v.poltronas) {
+        const info = v.poltronas[pn];
+        const s = document.createElement('div');
+        s.className = 'seat ' + info.status;
+        s.textContent = pn;
+        s.onclick = () => {
+          if (!v.aberto) { alert('Vendas encerradas'); return; }
+          if (info.status !== 'available') { alert('Poltrona indisponível'); return; }
+          const nome = document.getElementById('nome').value.trim() || 'Anônimo';
+          socket.emit('poltrona.reservada', { viagemId: id, poltrona: pn, nome });
+        };
+        poltronasEl.appendChild(s);
+      }
+    }
+
+    document.addEventListener('app.viagens.updated', refreshSelect);
+
+    // quando uma reserva é feita, se for minha (mesmo nome), perguntar pra confirmar
+    socket.on('poltrona.reservada', (payload) => {
+      const nomeDigitado = document.getElementById('nome').value.trim() || 'Anônimo';
+      if ((payload.reservedByName || 'Anônimo') === nomeDigitado) {
+        if (confirm(`Você reservou ${payload.poltrona}. Deseja confirmar agora?`)) {
+          socket.emit('reserva.confirmar', { viagemId: payload.viagemId, poltrona: payload.poltrona });
+        }
+      }
+    });
+
+  </script>
+</body>
+</html>
