@@ -2,6 +2,9 @@
 # Sistema de Passagens - Eventos Realtime (Node.js + Socket.IO)
 Alunos: Davi Jefferson Chiquetti e Marcus André Geacomo Demarchi
 
+- @Davi-jc
+- @MarcuseDemarchi
+
 ## Estrutura do projeto
 ```
 sistema-eventos/
